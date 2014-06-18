@@ -1,0 +1,271 @@
+\documentclass{article}
+
+\usepackage{libertine}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\newcommand{\given}{\mid}
+\newcommand{\cm}[1]{\mathcal{#1}}
+\newcommand{\data}{\cm{D}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\LL}{\cm{L}}
+\newcommand{\trans}{^{\top}}
+\newcommand{\inv}{^{-1}}
+
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+
+\title{Some derivatives of a GP with respect to its hyperparameters}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+Let $p(f) = \cm{GP}(f; \mu, K)$ and let $\data = \bigl\lbrace (x_i,
+y_i) \bigr\rbrace = (X, y)$ be observed data, where $y_i = f(x_i) +
+\varepsilon$ and $\varepsilon$ is iid zero-mean Gaussian noise with
+variance $\sigma^2$.
+
+Let $\LL$ represent the likelihood of the observed data given the
+hyperparameters $\theta$:\footnote{$\theta$ is assumed to contain the
+  parameters of $\mu$ and $K$ as well as the observation noise
+  parameter $\sigma^2$.}
+\begin{equation*}
+  \LL(\theta)
+  =
+  p(y \given X, \theta)
+  =
+  \cm{N}(y; \mu, V),
+\end{equation*}
+where we have defined $\mu = \mu(X)$ and $V = K(X, X) + \sigma^2 I$.
+Henceforth we will not explicitly write the argument $\theta$ of
+$\LL$. We have
+\begin{equation}
+  -2\log \LL
+  =
+  (y - \mu)\trans V\inv (y - \mu) + \log\det V + n \log 2\pi.
+  \label{log_likelihood}
+\end{equation}
+
+We may also write down the posterior distribution of $f$ conditioned
+on $\data$, which is also a Gaussian process with updated mean and
+covariance functions:
+\begin{equation*}
+  p(f \given \data) = \cm{GP}(f; \mu_{f \given \data}, K_{f \given \data}),
+\end{equation*}
+where
+\begin{align}
+  \mu_{f \given \data}(x) &= \mu(x) + K(x, X)V\inv(y - \mu);
+  \label{posterior_mean}
+  \\
+  K_{f \given \data}(x, x') &= K(x, x') - K(x, X)V\inv K(X, x').
+  \label{posterior_covariance}
+\end{align}
+
+Below we will calculate the gradient of the log likelihood $\log \LL$,
+and the posterior mean and variance functions, $\mu_{f \given
+  \data}$ and $K_{f \given \data}(x, x)$, with respect to the
+hyperparameters $\theta$.  We will additionally compute the Hessian of
+$\log \LL$ with respect to $\theta$.
+
+It will be useful to define the vector
+\begin{equation*}
+  \alpha = V^{-1} (y - \mu),
+\end{equation*}
+in which case we may write
+\begin{align*}
+  -2\log \LL
+  &=
+  (y - \mu)\trans \alpha + \log\det V + n \log 2\pi;
+  \\
+  \mu_{f \given \data}(x)
+  &=
+  \mu(x) + K(x, X)\alpha.
+\end{align*}
+
+\section{Gradient and Hessian of log likelihood}
+
+First we will consider the gradient and Hessian of $\log \LL$ with
+respect to $\theta$.
+
+\subsection{Gradient}
+
+We may calculate the gradient of \eqref{log_likelihood} with respect
+to each of the hyperparameters in $\theta$.  For brevity, we will
+refer to the $i$th parameter of $\mu$ as $\mu_i$ and the $i$th
+parameter of $K$ as $K_i$.  We will also write, for example, $\mu'_i$
+to compactly indicate the partial derivative of $\mu$ evaluated at $X$
+and, for example, $K''_{ij}$ to indicate the matrix of corresponding
+partial derivatives evaluated at $X$:
+\begin{equation*}
+  K''_{ij} = \frac{\partial^2 K(X, X)}{\partial K_i \partial K_j}.
+\end{equation*}
+
+We assume the noise parameter $\sigma$ is parametrized by its logarithm.
+
+\paragraph{Gradient with respect to covariance parameters}
+
+\begin{equation*}
+  -2\frac{\partial \log \LL}{\partial K_i}
+  =
+  -\alpha\trans K'_i \alpha + \tr(V^{-1} K'_i).
+\end{equation*}
+
+\paragraph{Gradient with respect to mean parameters}
+
+\begin{equation*}
+  -\frac{\partial \log \LL}{\partial \mu_i}
+  =
+  -(\mu'_i)\trans \alpha.
+\end{equation*}
+
+\paragraph{Gradient with respect to noise}
+
+\begin{equation*}
+  -\frac{\partial \log \LL}{\partial \log \sigma}
+  =
+  \sigma^2 \bigl(\tr(V^{-1}) - \alpha\trans \alpha\bigr).
+\end{equation*}
+
+\subsection{Hessian of log likelihood}
+
+Now we calculate the Hessian of \eqref{log_likelihood} with respect to
+all pairs of hyperparameters in $\theta$.
+
+\paragraph{Covariance/covariance Hessian entries}
+
+\begin{equation*}
+  -2 \frac{\partial^2 \log \LL}{\partial K_i \partial K_j}
+  =
+  2\alpha\trans K'_i  V\inv K'_j \alpha
+  - \tr(V\inv K'_i V\inv K'_j)
+  - \alpha\trans K''_{ij} \alpha
+  + \tr(V\inv K''_{ij}).
+\end{equation*}
+
+\paragraph{Covariance/mean Hessian entries}
+
+\begin{equation*}
+  -\frac{\partial^2 \log \LL}{\partial K_i \partial \mu_i}
+  =
+  (\mu'_i)\trans V\inv K'_i \alpha.
+\end{equation*}
+
+\paragraph{Covariance/noise Hessian entries}
+
+\begin{equation*}
+  -\frac{\partial^2 \log \LL}{\partial K_i \partial \log \sigma}
+  =
+  \sigma^2
+  \bigl(
+  2\alpha\trans K'_i V\inv \alpha
+  - \tr(V\inv K'_i V\inv)
+  \bigr).
+\end{equation*}
+
+\paragraph{Mean/mean Hessian entries}
+
+\begin{equation*}
+  -\frac{\partial^2 \log \LL}{\partial \mu_i \partial \mu_j}
+  =
+  (\mu'_i)\trans V\inv (\mu'_j)
+  + (\mu''_{ij})\trans \alpha.
+\end{equation*}
+
+\paragraph{Mean/noise Hessian entries}
+
+\begin{equation*}
+  -\frac{\partial^2 \log \LL}{\partial \mu_i \partial \log \sigma}
+  =
+  2\sigma^2(\mu'_i)\trans V\inv \alpha.
+\end{equation*}
+
+\paragraph{Noise/noise Hessian entry}
+
+\begin{equation*}
+  -\frac{\partial^2 \log \LL}{\partial \log \sigma \partial \log \sigma}
+  =
+  2 \sigma^4\bigl(2 \alpha\trans V\inv \alpha - \tr(V\inv V\inv)\bigr) - 2\frac{\partial \log \LL}{\partial \log \sigma}.
+\end{equation*}
+
+\section{Gradient of predictive mean and variance}
+
+Finally, we will compute the gradient of the posterior mean
+\eqref{posterior_mean} and posterior variance
+\eqref{posterior_covariance} functions with respect to $\theta$.  We
+will only compute the gradient of the posterior variance; that is,
+$K_{f \given \data}(x, x)$, where both inputs are equal.
+
+Here it will be useful to define the vector $\beta$:
+\begin{equation*}
+  \beta\trans
+  =
+  K(x, X)V\inv.
+\end{equation*}
+For two matrices $A, B \in \R^{n \times m}$, we will also define the
+operation
+\begin{equation*}
+  A \otimes B
+  =
+  \diag AB\trans,
+\end{equation*}
+where the $\diag$ operator indicates we only retain the diagonal of
+the product (an $n$-dimensional vector).  This operation can be
+computed efficiently without computing the product directly via
+summing the rows of the Hadamard product:\footnote{For example, in
+  \textsc{matlab}, we can compute $A \otimes B$ as
+  \texttt{sum(A .* B', 2)}.}
+\begin{equation*}
+  [A \otimes B]_{i}
+  =
+  \sum_j [A \circ B]_{ij}.
+\end{equation*}
+
+\paragraph{Gradient with respect to covariance hyperparameters}
+
+\begin{align*}
+  \frac{\partial \mu_{f \given \data}(x)}{\partial K_i}
+  &=
+  \bigl(K'_i(x, X) - \beta\trans K_i\bigr)\alpha.
+  \\
+  \frac{\partial K_{f \given \data}(x, x)}{\partial K_i}
+  &=
+  K'_i(x, x) -
+  \Bigl(
+  \beta\trans
+  \otimes
+  \bigl(
+  2 K'_i(x, X) - K_i \beta
+  \bigr)\trans
+  \Bigr).
+\end{align*}
+
+\paragraph{Gradient with respect to mean hyperparameters}
+
+\begin{align*}
+  \frac{\partial \mu_{f \given \data}(x)}{\partial \mu_i}
+  &=
+  \mu'_i(x)
+  -
+  \beta\trans \mu'_i(X).
+  \\
+  \frac{\partial K_{f \given \data}(x, x)}{\partial \mu_i}
+  &=
+  0.
+\end{align*}
+
+\paragraph{Gradient with respect to noise}
+
+\begin{align*}
+  \frac{\partial \mu_{f \given \data}(x)}{\partial \log \sigma}
+  &=
+  -2\sigma^2 \beta\trans \alpha
+  \\
+  \frac{\partial K_{f \given \data}(x, x)}{\partial \log \sigma}
+  &=
+  2\sigma^2 (\beta \otimes \beta).
+\end{align*}
+
+\end{document}
