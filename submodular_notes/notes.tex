@@ -1,0 +1,152 @@
+\documentclass{article}
+
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{nicefrac}
+\usepackage[a4paper, margin=1.5in]{geometry}
+\usepackage[fullfamily,opticals,textosf,mathlf,minionint,loosequotes,openg,footnotefigures]{MinionPro}
+\usepackage{bm}
+
+\newcommand{\given}{\mid}
+\newcommand{\cm}[1]{\mathcal{#1}}
+\newcommand{\data}{\cm{D}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\LL}{\cm{L}}
+\newcommand{\trans}{^{\top}}
+\newcommand{\inv}{^{-1}}
+\newcommand{\intd}[1]{\, \mathrm{d}#1}
+\newcommand{\acro}[1]{\textsc{\MakeLowercase{#1}}}
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+\newcommand{\mat}[1]{\vec{#1}}
+\newcommand{\ff}{\vec{f}}
+\newcommand{\deq}{\triangleq}
+\newcommand{\half}{^{\nicefrac{1}{2}}}
+\newcommand{\hf}{\vec{\phi}}
+\newcommand{\vt}{\vec{\theta}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pdc}[3]{\biggl[ \pd{#1}{#2} \biggr]_{#3}}
+
+\newcommand{\pdd}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+\newcommand{\pddcc}[5]{\frac{\partial^2 #1}{[\partial #2]_{#3} [\partial #4]_{#5}}}
+\newcommand{\sh}{{\textstyle \frac{1}{2}}}
+
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newtheorem{thm}{Theorem}
+\newtheorem{cor}{Corrolary}
+
+\begin{document}
+
+Let $\cm{V}$ be an arbitrary finite ground set with $\lvert \cm{V}
+\rvert = m$.  Let $f\colon 2^{\cm{V}} \to \R$ be an arbitrary set
+function.  We consider $n$ agents, each of which selects a set $S_i
+\in 2^\cm{V}$ with $\lvert S_i \rvert \leq k$ for $1 \leq i \leq n$.
+After selection, the agents share a reward of
+\[
+  f\biggl( \bigcup_{i = 1}^n S_i \biggr).
+\]
+We wish to find a symmetric strategy for the agents to maximize the
+expected reward.  Unfortunately, deriving the optimal mixed strategy
+for a given problem instance (specified by the tuple $(\cm{V}, f, n,
+k)$) requires enumerating all $\cm{O}(m^k)$ possible choices.
+
+We consider instead a restricted class of mixed strategies of the
+following form. Let $\pi \in \R^m$ be a probability distribution over
+$\cm{V}$.  Given $\pi$, each agent $i$ samples and returns a set of
+size at most $k$ from the corresponding multinomial distribution:
+\[
+  S_i \sim \cm{MN}(\pi, k).
+\]
+We will use the shorthand notation $S_i \sim \pi$ to indicate drawing
+from this distribution.
+
+Given $\pi$, assuming that an agent knows the number of agents $n$,
+she may compute the expected global reward, under the assumption
+that all other agents operate under the same strategy:
+\[
+  \phi(\pi)
+  =
+  \mathbb{E}_{S_i \sim \pi}
+  \Biggl[
+    f\biggl( \bigcup_{i = 1}^n S_i \biggr)
+  \Biggr].
+\]
+The agent may then maximize the expected reward as a function of
+the element selection probabilities:
+\[
+  \pi^\ast
+  =
+  \argmax_\pi \phi(\pi);
+\]
+finally, each agent samples their $S_i \sim \pi^\ast$.
+
+\begin{thm}[Ben]{Assume $f$ is nonnegative, monotonic, and submodular. Then
+    this procedure has an approximation guarantee of $(1 - \frac{1}{e})^2$.}
+\end{thm}
+\begin{proof}
+  Let S' be the set returned by running
+  $\text{\textsc{greedy}}(\cm{V}, f, nk)$. Defining
+  \[
+    \pi_i =
+    \begin{cases}
+      \frac{1}{nk} & i \in S' \\
+      0            & i \notin S'
+    \end{cases}
+  \]
+  is sufficient to prove the result.  The optimal $\pi^\ast$, by
+  definition, must work at least as well.
+\end{proof}
+
+\begin{cor}[Ben]{Assume $f$ is nonnegative and modular. Then
+    this procedure has an approximation guarantee of $(1 -
+    \frac{1}{e})$.  This is the best approximation guarantee
+    possible in general.}
+\end{cor}
+\begin{proof}
+  Given $\cm{V}$, and assuming $m \geq nk$, define the modular
+  function
+  \[
+    f(e_i) =
+    \begin{cases}
+      1 & i \leq nk \\
+      0 & i > nk
+    \end{cases}
+  \]
+  In this case, $\pi^\ast$ is as in the above theorem and achieves
+  expected reward
+  \[
+    \phi(\pi^\ast) =
+    (1 - \tfrac{1}{e})nk =
+    (1 - \tfrac{1}{e})\text{\acro{OPT}}
+  \]
+  in the limit.
+\end{proof}
+
+\section*{Analysis of the modular case}
+
+Assume $f$ is nonnegative and modular.  Define the random variable $S
+= \cup_i S_i$.  Define the vector $w(\pi)$ by
+\[
+  w(\pi)_i
+  = \Pr(e_i \in S \given \pi, n, k, f)
+  = (1 - (1 - \pi_i)^{nk}).
+\]
+Then $\phi(\pi) = w(\pi)\trans f$. We may compute
+\begin{align*}
+  \frac{\partial w}{\partial \pi}
+  &=
+  nk(1 - \pi)^{nk - 1}; \\
+  \frac{\intd{\phi}}{\partial \pi}
+  &=
+  \Biggl[\frac{\partial w}{\partial \pi}\Biggr]\trans f.
+\end{align*}
+We now may find $\pi^\ast$ via gradient ascent, renormalizing $\pi$
+after every gradient step.
+
+\end{document}
