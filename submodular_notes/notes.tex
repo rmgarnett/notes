@@ -54,7 +54,8 @@ After selection, the agents share a reward of
 We wish to find a symmetric strategy for the agents to maximize the
 expected reward.  Unfortunately, deriving the optimal mixed strategy
 for a given problem instance (specified by the tuple $(\cm{V}, f, n,
-k)$) requires enumerating all $\cm{O}(m^k)$ possible choices.
+k)$) requires enumerating all $\cm{O}(m^k)$ possible choices and
+optimizing $\cm{O}(m^k)$ associated continuous probabilities.
 
 We consider instead a restricted class of mixed strategies of the
 following form. Let $\pi \in \R^m$ be a probability distribution over
@@ -64,7 +65,10 @@ size at most $k$ from the corresponding multinomial distribution:
   S_i \sim \cm{MN}(\pi, k).
 \]
 We will use the shorthand notation $S_i \sim \pi$ to indicate drawing
-from this distribution.
+from this distribution.  Note that $S_i$ might have cardinality less
+than $k$ because we sample the elements independently with
+replacement.\footnote{Sampling without replacement might be possible,
+  but the remaining analysis might break down due to the dependence.}
 
 Given $\pi$, assuming that an agent knows the number of agents $n$,
 she may compute the expected global reward, under the assumption
@@ -77,30 +81,107 @@ that all other agents operate under the same strategy:
     f\biggl( \bigcup_{i = 1}^n S_i \biggr)
   \Biggr].
 \]
-The agent may then maximize the expected reward as a function of
-the element selection probabilities:
-\[
-  \pi^\ast
-  =
-  \argmax_\pi \phi(\pi);
-\]
-finally, each agent samples their $S_i \sim \pi^\ast$.
+This computation relies on the so-called \emph{multilinear extension}
+of the set function $f$.
 
-\begin{thm}[Ben]{Assume $f$ is nonnegative, monotonic, and submodular. Then
-    this procedure has an approximation guarantee of $(1 - \frac{1}{e})^2$.}
-\end{thm}
-\begin{proof}
-  Let S' be the set returned by running
-  $\text{\textsc{greedy}}(\cm{V}, f, nk)$. Defining
+Consider a point $x$ in the unit cube $[0, 1]^m$.  We define a
+function $g(x; f)\colon [0, 1]^m \to \R$ from $f$ in the following
+way.  Let $S \subseteq \cm{V}$ be a random set, where we include
+element $e_i$ in $S$ independently with probability $x_i$:
+\[
+  \Pr(e_i \in S \given x) = x_i.
+\]
+We will abuse notation and write $S \sim x$ to indicate this
+generative process defined by $x$.  Then we define
+\[
+  g(x; f) = \mathbb{E}_{S \sim x}\bigl[f(S)\bigr].
+\]
+The function $g$, defined by taking the expected value of $f(S)$,
+allowing $S$ to be generated randomly according to the probabilities
+in $x$, is called the \emph{multilinear extension} of $f$.  Note that
+if we set $x$ to a binary vector, then the value of $g$ is exactly
+equal to the set function evaluated on a corresponding set.  For example:
+\[
+  g\bigl([1, 0, 0, \dots]\trans; f\bigr) = f\bigl(\{ e_1 \}\bigr).
+\]
+The function $g$ therefore ``extends'' the set function $f$ from the
+corners of the unit cube (binary vectors, exact set function values)
+to the entire unit cube by allowing ``fuzzy'' set membership.
+
+Consider again the multi-agent problem above, and define the random
+variable $S = \cup_i S_i$.  Given a per-agent probability vector $\pi$,
+we define the vector $x(\pi)$ by
+\[
+  x(\pi; n, k)_i
+  = \Pr(e_i \in S \given \pi, n, k)
+  = (1 - (1 - \pi_i)^{nk}).
+\]
+The vector $x(\pi; n, k)$ now gives the elementwise probability that
+each element $e \in \cm{V}$ ends up in $S$, the union of the agents'
+choices, assuming the agents each select $k$ elements independently
+according to $\pi$, as described above.\footnote{We computed $x$ by
+  considering the probability that \emph{none} of the agents selected
+  each element, then subtracted this value from unity to give the
+  probability that \emph{at least one} agent would select that
+  element.}  Note that $x$ is in fact a function of $\pi$, $n$, and
+$k$, but we will ignore the dependence on $n$ and $k$ for brevity
+as all agents are assumed to know this information.
+
+Now, given $\pi$, $n$, $k$, and $f$, each agent may use the
+multilinear extension to compute the expected global reward shared
+by the agents, if each were to use the vector $\pi$:
+\[
+  \phi(\pi)
+  =
+  \mathbb{E}_{S_i \sim \pi}
+  \Biggl[
+    f\biggl( \bigcup_{i = 1}^n S_i \biggr)
+  \Biggr]
+  =
+  \mathbb{E}_{S \sim x(\pi)}[f(S)\bigr]
+  =
+  g\bigl(x(\pi); f\bigr).
+\]
+
+How should each agent select $\pi$?  Note we already have several
+strategies for doing this:
+\begin{itemize}
+\item Let S' be the set returned by running
+  $\text{\textsc{greedy}}(\cm{V}, f, nk)$. The \textsc{greedy}$(nk)$
+  strategy sets
   \[
     \pi_i =
     \begin{cases}
       \frac{1}{nk} & i \in S' \\
       0            & i \notin S'
     \end{cases}
-  \]
+  \].
+\item
+  The \textsc{weighted}$(nk)$ algorithm sets nonuniform weights on
+  $S'$ by considering either the elementwise set function values
+  $f\bigl(\{e_i\}\bigr)$ or the sequential improvement during the
+  greedy procedure.
+\item
+  The \textsc{random} strategy sets $\pi_i = \frac{1}{m}$ for all
+  elements.
+\end{itemize}
+
+The agent may then maximize the expected reward as a function of the
+element selection probabilities; that is, each agent seeks
+\[
+  \pi^\ast
+  =
+  \argmax_\pi \phi(\pi).
+\]
+Finally, each agent samples their $S_i \sim \pi^\ast$.
+
+\begin{thm}[Ben]{Assume $f$ is nonnegative, monotonic, and submodular. Then
+    this procedure has an approximation guarantee of $(1 - \frac{1}{e})^2$.}
+\end{thm}
+\begin{proof}
+  The $pi$ vector defined above for the \textsc{greedy}$(nk)$ strategy
   is sufficient to prove the result.  The optimal $\pi^\ast$, by
-  definition, must work at least as well.
+  definition, must work at least as well as this $\pi$.
 \end{proof}
 
 \begin{cor}[Ben]{Assume $f$ is nonnegative and modular. Then
@@ -128,25 +209,111 @@ finally, each agent samples their $S_i \sim \pi^\ast$.
   in the limit.
 \end{proof}
 
-\section*{Analysis of the modular case}
+\section{Finding $\pi^\ast$}
 
-Assume $f$ is nonnegative and modular.  Define the random variable $S
-= \cup_i S_i$.  Define the vector $w(\pi)$ by
+How do we find $\pi^\ast$?  This is a constrained optimization
+problem; we assume $\pi$ must be a probability distribution over the
+elements.  Therefore each entry of $\pi$ must be positive and the
+entries must sum to 1..  It can be useful to relax the latter
+condition and instead insist that $\sum_i \pi_i \leq 1$ (the remaining
+probability mass can be interpreted as ``no element selected'').
+
+Our problem is to find
 \[
-  w(\pi)_i
-  = \Pr(e_i \in S \given \pi, n, k, f)
-  = (1 - (1 - \pi_i)^{nk}).
+  \argmax_{\pi} \phi(\pi) = \argmax_{\pi} g\bigl(x(\pi); f\bigr),
 \]
-Then $\phi(\pi) = w(\pi)\trans f$. We may compute
-\begin{align*}
-  \frac{\partial w}{\partial \pi}
-  &=
-  nk(1 - \pi)^{nk - 1}; \\
-  \frac{\intd{\phi}}{\partial \pi}
-  &=
-  \Biggl[\frac{\partial w}{\partial \pi}\Biggr]\trans f.
-\end{align*}
-We now may find $\pi^\ast$ via gradient ascent, renormalizing $\pi$
-after every gradient step.
+subject to the above constraints on $\pi$.  To facilitate this
+optimization, we may compute the gradient of our objective with
+respect to $\pi$.  Applying the chain rule, we have
+\[
+  \frac{\partial g\bigl(x(\pi); f\bigr)}{\partial \pi}
+  =
+  \frac{\partial g\bigl(x(\pi); f\bigr)}{\partial x}
+  \frac{\partial x}{\partial \pi}.
+\]
+The derivative of $x$ with respect to $\pi$ is simple to compute:
+\[
+  \frac{\partial x}{\partial \pi_i}
+  =
+  nk(1 - \pi_i)^{nk - 1}.
+\]
+Computing the gradient of $g$ with respect to $x$ is a little more
+complicated.  By considering the definition of the multilinear
+extension again, and writing out the expectation as a sum over all
+$2^m$ possible sets $S$, we may compute the gradient as follows:
+\[
+  \frac{\partial g}{\partial x_i}\Biggr\rvert_x
+  =
+  \mathbb{E}_{S \sim x}
+  \Bigl[f\bigl(S \cup \{ e_i \}\bigr) - f\bigl(f \setminus \{e_i\}\bigr)\Bigr].
+\]
+Define the following abuses of notation:
+\[
+  S + i = S \cup      \{e_i\}; \qquad
+  S - i = S \setminus \{e_i\}.
+\]
+Now
+\[
+  \frac{\partial g}{\partial x_i}\Biggr\rvert_x
+  =
+  \mathbb{E}_{S \sim x}\bigl[f(S + i) - f(S - i)\bigr].
+\]
+Note that the sets $S + i$ and $S - i$ differ by exactly one element.
+We may interpret this gradient as giving the instantaneous benefit
+from increasing each entry in the elementwise probability vector $x$.
+
+Unfortunately, computing this gradient in closed form requires summing
+over all $2^m$ possible values of $S$.\footnote{Unless $x$ is a corner
+  of the unit cube, where we may compute it exactly as in the
+  multilinear extension itself.}  However, we may make a Monte Carlo
+estimate of the gradient by repeatedly sampling $S$ elementiwise
+according to $x$ and averaging the contributions above.  There are
+some theoretical results informing us how much error is involved in
+this procedure as a function of the number of samples.
+
+The \emph{continuous greedy} algorithm considers an optimization
+procedure that (I believe) is equivalent to the following.  Define the
+feasible set for $x$ to be the set of points $x(\pi)$ for $\pi$
+satisfying our constraints:
+\[
+  \cm{F} \subset [0, 1]^m
+  =
+  \bigl\{x(\pi) \mid \forall \pi_i > 0, \sum_i \pi_i \leq 1 \bigr\}.
+\]
+Note that the feasible set $\cm{F}$ is down monotone and depends
+implicitly on $n$ and $k$, due to the unwritten dependence of $x(\pi)$
+on these parameters.  In general, larger $n$ and/or $k$ allows us
+to achieve higher elementwise probabilities in the union, increasing
+the feasible set.
+
+We set $\pi_0 = 0$; therefore $x(\pi_0) = x_0 = 0$.  Then we iterate
+the following procedure:
+\begin{itemize}
+\item
+  We compute the gradient at the current value of $x$:
+  \[\Delta_i = \frac{\partial g}{\partial x}\Biggr\rvert_{x_i}\].
+\item
+  We find the point in $\cm{F}$ most in the direction of this gradient:
+  \[
+    x^\ast_i = \argmax_{x \in \cm{F}} \delta_i\trans x.
+  \]
+\item
+  We move in the direction of $x^\ast_i$ by adding a small multiple of
+  this vector to our current vector:
+  \[
+    x_{i + 1} = x_i + \gamma x^\ast_i,
+  \]
+  where $\gamma > 0$ is a small constant.
+\end{itemize}
+Note that at each step of this algorithm, we may compute the
+corresponding agent probabilities $\{\pi_i\}$ from the sequence of union
+probabilities $\{x_i\}$.
+
+We repeat this procedure until convergence.  There are more
+sophisticated techniques available for constrained optimization;
+however, this procedure is simple.  Furthermore, we might be able to
+exploit some theoretical guarantees offered by the continuous greedy
+algorithm.  However, it is unclear whether the result of that
+investigation would be any better than the Ben theorem above.
 
 \end{document}
